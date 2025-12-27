@@ -102,6 +102,8 @@ function App() {
           value={isListening ? (inputText + (interimTranscript ? ' ' + interimTranscript : '')) : inputText}
           onChange={setInputText}
           placeholder={isListening ? "Listening..." : "Type here..."}
+          onSubmit={() => handleTranslate(inputText)}
+          lang={sourceLang}
         />
         <div onClick={() => savePhrase(inputText, translation)} className="cursor-pointer">
           <OutputArea translation={translation} isTranslating={isTranslating} targetLang={targetLang} />
