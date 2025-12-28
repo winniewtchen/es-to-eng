@@ -4,8 +4,8 @@ export const translateText = async (text, targetLang = 'es') => {
     return '';
   }
 
-  if (text.length > 500) {
-    return 'Error: Text exceeds 500 character limit';
+  if (text.length > 5000) {
+    return 'Error: Text exceeds 5000 character limit';
   }
 
   try {

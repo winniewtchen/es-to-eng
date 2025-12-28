@@ -2,7 +2,7 @@
 // Rate limited to 5 requests per minute per IP
 
 const rateLimitMap = new Map();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 100;
 const RATE_WINDOW_MS = 60 * 1000;
 
 function checkRateLimit(ip) {
@@ -32,8 +32,8 @@ function validateInput(text) {
     return { valid: false, error: 'Text cannot be empty' };
   }
   
-  if (trimmed.length > 500) {
-    return { valid: false, error: 'Text exceeds 500 character limit' };
+  if (trimmed.length > 5000) {
+    return { valid: false, error: 'Text exceeds 5000 character limit' };
   }
   
   const suspiciousPatterns = /<script|javascript:|on\w+=/i;

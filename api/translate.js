@@ -3,7 +3,7 @@
 
 // Simple in-memory rate limiter (resets on cold start, but works for basic protection)
 const rateLimitMap = new Map();
-const RATE_LIMIT = 5;
+const RATE_LIMIT = 100;
 const RATE_WINDOW_MS = 60 * 1000; // 1 minute
 
 function checkRateLimit(ip) {
@@ -34,8 +34,8 @@ function validateInput(text, targetLang) {
     return { valid: false, error: 'Text cannot be empty' };
   }
   
-  if (trimmed.length > 500) {
-    return { valid: false, error: 'Text exceeds 500 character limit' };
+  if (trimmed.length > 5000) {
+    return { valid: false, error: 'Text exceeds 5000 character limit' };
   }
   
   // Check for suspicious patterns (script injection etc.)
@@ -57,7 +57,7 @@ function sanitizeOutput(text) {
     return '';
   }
   // Truncate overly long responses
-  return text.slice(0, 1000).trim();
+  return text.slice(0, 5000).trim();
 }
 
 export default async function handler(req, res) {
