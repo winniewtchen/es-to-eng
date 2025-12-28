@@ -1,48 +1,35 @@
-export const translateText = async (text, targetLang = 'es', apiKey) => {
-  // Mock mode if no key
-  if (!apiKey) {
-      return new Promise(resolve => {
-          setTimeout(() => {
-              const mockResponse = targetLang === 'es' 
-                ? "Translation requires API Key. (Mock: Hola, ¿cómo estás?)"
-                : "Translation requires API Key. (Mock: Hello, how are you?)";
-              resolve(mockResponse);
-          }, 800);
-      });
+export const translateText = async (text, targetLang = 'es') => {
+  // Client-side validation before making request
+  if (!text || text.trim().length < 2) {
+    return '';
   }
 
-  const prompt = targetLang === 'es'
-    ? "You are a fast translator. Translate the user input to conversational Mexican Spanish. Write out all numbers as words (e.g., '100' -> 'cien', '5' -> 'cinco'). Output ONLY the translation. No explanations."
-    : "You are a fast translator. Translate the user input to English. Output ONLY the translation. No explanations.";
+  if (text.length > 500) {
+    return 'Error: Text exceeds 500 character limit';
+  }
 
-  // Example implementation for OpenAI
   try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-              model: "gpt-3.5-turbo",
-              messages: [
-                  {
-                      role: "system",
-                      content: prompt
-                  },
-                  {
-                      role: "user",
-                      content: text
-                  }
-              ],
-              temperature: 0.3
-          })
-      });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
-      return data.choices[0].message.content.trim();
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: text.trim(),
+        targetLang
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return `Error: ${data.error || 'Translation failed'}`;
+    }
+
+    return data.translation || '';
   } catch (err) {
-      console.error(err);
-      return "Error: " + err.message;
+    console.error('Translation error:', err);
+    return 'Error: Network request failed';
   }
 }
+

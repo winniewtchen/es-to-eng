@@ -3,7 +3,6 @@ import MainLayout from '@/components/layout/MainLayout'
 import InputArea from '@/components/features/Translator/InputArea'
 import OutputArea from '@/components/features/Translator/OutputArea'
 import AudioControls from '@/components/features/Translator/AudioControls'
-import SettingsSheet from '@/components/features/Settings/SettingsSheet'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { translateText } from '@/services/llm'
 import { useVocabulary } from '@/hooks/useVocabulary'
@@ -64,8 +63,7 @@ function App() {
   const handleTranslate = async (text) => {
     if (!text || text.length < 2) return;
     setIsTranslating(true);
-    const apiKey = localStorage.getItem('rapido_api_key') || import.meta.env.VITE_OPENAI_API_KEY;
-    const result = await translateText(text, targetLang, apiKey);
+    const result = await translateText(text, targetLang);
     setTranslation(result);
     setIsTranslating(false);
   };
@@ -88,7 +86,7 @@ function App() {
 
 
   return (
-    <MainLayout headerRight={<div className="flex gap-2"><SettingsSheet /><VocabSheet vocab={vocab} onDelete={deletePhrase} /></div>}>
+    <MainLayout headerRight={<VocabSheet vocab={vocab} onDelete={deletePhrase} />}>
       <div className="flex-1 flex flex-col gap-6 pb-24">
         <div className="flex items-center justify-between px-4">
           <span className="text-sm font-medium text-muted-foreground">{sourceLang === 'en-US' ? 'English' : 'Spanish'}</span>
