@@ -12,15 +12,26 @@ const OutputArea = ({ translation, isTranslating, targetLang = 'es' }) => {
     const handleSpeak = (e) => {
         e.stopPropagation(); // Prevent parent "save" click
         // Map short code to full locale for better TTS
-        const locale = targetLang === 'es' ? 'es-MX' : 'en-US';
+        const localeMap = {
+            'es': 'es-MX',
+            'en': 'en-US',
+            'zh': 'zh-CN'
+        };
+        const locale = localeMap[targetLang] || 'en-US';
         speak(translation, locale);
+    };
+
+    // Get language label
+    const getLangLabel = () => {
+        const labels = { 'es': 'Spanish', 'en': 'English', 'zh': '中文' };
+        return labels[targetLang] || 'Translation';
     };
 
     return (
         <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {targetLang === 'es' ? 'Spanish' : 'English'}
+                    {getLangLabel()}
                 </span>
                 <div className="flex gap-1">
                     {/* Visual hint for audio */}

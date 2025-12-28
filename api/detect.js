@@ -1,10 +1,9 @@
-// Vercel serverless function for secure Google Cloud Translation API
+// Vercel serverless function for language detection using Google Cloud Translation API
 // Rate limited to 5 requests per minute per IP
 
-// Simple in-memory rate limiter (resets on cold start, but works for basic protection)
 const rateLimitMap = new Map();
 const RATE_LIMIT = 5;
-const RATE_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_WINDOW_MS = 60 * 1000;
 
 function checkRateLimit(ip) {
   const now = Date.now();
@@ -23,8 +22,7 @@ function checkRateLimit(ip) {
   return true;
 }
 
-// Input validation
-function validateInput(text, targetLang) {
+function validateInput(text) {
   if (!text || typeof text !== 'string') {
     return { valid: false, error: 'Text is required' };
   }
@@ -38,44 +36,27 @@ function validateInput(text, targetLang) {
     return { valid: false, error: 'Text exceeds 500 character limit' };
   }
   
-  // Check for suspicious patterns (script injection etc.)
   const suspiciousPatterns = /<script|javascript:|on\w+=/i;
   if (suspiciousPatterns.test(trimmed)) {
     return { valid: false, error: 'Invalid input detected' };
   }
   
-  if (!['es', 'en', 'zh'].includes(targetLang)) {
-    return { valid: false, error: 'Invalid target language' };
-  }
-  
   return { valid: true, text: trimmed };
 }
 
-// Output sanitization
-function sanitizeOutput(text) {
-  if (!text || typeof text !== 'string') {
-    return '';
-  }
-  // Truncate overly long responses
-  return text.slice(0, 1000).trim();
-}
-
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Rate limiting
   const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Rate limit exceeded. Please wait a minute.' });
   }
 
-  const { text, targetLang = 'es' } = req.body;
+  const { text } = req.body;
 
-  // Validate input
-  const validation = validateInput(text, targetLang);
+  const validation = validateInput(text);
   if (!validation.valid) {
     return res.status(400).json({ error: validation.error });
   }
@@ -86,8 +67,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Google Cloud Translation API v2
-    const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
+    const url = `https://translation.googleapis.com/language/translate/v2/detect?key=${apiKey}`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -95,26 +75,25 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        q: validation.text,
-        target: targetLang,
-        format: 'text'
+        q: validation.text
       })
     });
 
     const data = await response.json();
     
     if (data.error) {
-      console.error('Google Translate error:', data.error);
-      return res.status(500).json({ error: 'Translation failed' });
+      console.error('Google Translate detect error:', data.error);
+      return res.status(500).json({ error: 'Detection failed' });
     }
 
-    const translatedText = data.data?.translations?.[0]?.translatedText;
-    const translation = sanitizeOutput(translatedText);
-    return res.status(200).json({ translation });
+    const detection = data.data?.detections?.[0]?.[0];
+    return res.status(200).json({
+      language: detection?.language || 'en',
+      confidence: detection?.confidence || 0
+    });
     
   } catch (err) {
-    console.error('Translation error:', err);
-    return res.status(500).json({ error: 'Translation failed' });
+    console.error('Detection error:', err);
+    return res.status(500).json({ error: 'Detection failed' });
   }
 }
-
