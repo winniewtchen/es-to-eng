@@ -10,12 +10,13 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
                 size="lg"
                 variant={isListening ? "destructive" : "default"}
                 className={cn(
-                    "h-16 w-16 rounded-full shadow-lg pointer-events-auto transition-all duration-300",
-                    isListening ? "scale-110 ring-4 ring-destructive/30" : "hover:scale-105"
+                    "h-24 w-24 rounded-full shadow-lg pointer-events-auto transition-all duration-300 touch-none select-none",
+                    isListening ? "scale-110 ring-4 ring-destructive/30" : "hover:scale-105 active:scale-95"
                 )}
                 onMouseDown={onStartListening}
                 onMouseUp={onStopListening}
                 onMouseLeave={onStopListening}
+                onContextMenu={(e) => e.preventDefault()}
                 onTouchStart={(e) => {
                     e.preventDefault(); // Prevent ghost clicks and scrolling
                     onStartListening();
@@ -29,7 +30,7 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
                     onStopListening();
                 }}
             >
-                <Mic className={cn("h-8 w-8 transition-transform", isListening && "scale-110")} />
+                <Mic className={cn("h-10 w-10 transition-transform", isListening && "scale-110")} />
             </Button>
         </div>
     );
