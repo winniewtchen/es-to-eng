@@ -34,9 +34,16 @@ const OutputArea = ({ translation, isTranslating, targetLang = 'es' }) => {
                     {getLangLabel()}
                 </span>
                 <div className="flex gap-1">
-                    {/* Visual hint for audio */}
+                    {/* Clickable audio button */}
                     {translation && !isTranslating && (
-                        <Volume2 className="h-4 w-4 text-muted-foreground opacity-50" />
+                        <button
+                            onClick={handleSpeak}
+                            className="p-1 rounded-md hover:bg-muted transition-colors"
+                            title="Click to listen"
+                            aria-label="Play audio"
+                        >
+                            <Volume2 className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                        </button>
                     )}
                 </div>
             </div>

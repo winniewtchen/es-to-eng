@@ -1,10 +1,10 @@
 import React from 'react';
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { CornerDownLeft, Volume2 } from "lucide-react"
+import { CornerDownLeft, Volume2, Camera } from "lucide-react"
 import { useTextToSpeech } from "@/hooks/useTextToSpeech"
 
-const InputArea = ({ value, onChange, placeholder, onSubmit, lang }) => {
+const InputArea = ({ value, onChange, placeholder, onSubmit, lang, onImageClick }) => {
     const { speak } = useTextToSpeech();
 
     const handleKeyDown = (e) => {
@@ -30,15 +30,28 @@ const InputArea = ({ value, onChange, placeholder, onSubmit, lang }) => {
                     autoFocus
                 />
 
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => speak(value, lang)}
-                    title="Listen"
-                >
-                    <Volume2 className="h-4 w-4" />
-                </Button>
+                <div className="absolute top-2 right-2 flex items-center gap-1">
+                    {onImageClick && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={onImageClick}
+                            title="Translate from image"
+                        >
+                            <Camera className="h-4 w-4" />
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => speak(value, lang)}
+                        title="Listen"
+                    >
+                        <Volume2 className="h-4 w-4" />
+                    </Button>
+                </div>
 
                 <Button
                     size="icon"

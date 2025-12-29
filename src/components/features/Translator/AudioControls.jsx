@@ -1,11 +1,8 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import { Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMicLevel } from "@/hooks/useMicLevel";
-import P5WaveShader from "@/components/features/Translator/P5WaveShader";
 
 const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
-    const { level } = useMicLevel({ enabled: isListening });
     const activeRef = useRef(false);
 
     const start = useCallback(() => {
@@ -57,11 +54,11 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
     const label = isListening ? "Release to stop" : "Hold to speak";
 
     return (
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center p-4 gradient-mask-t pointer-events-none">
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center p-4 gradient-mask-t pointer-events-none z-40">
             <div
                 className={cn(
-                    // isolate avoids negative z-index issues in some layouts; keeps shader behind button but visible
-                    "relative isolate flex h-32 w-32 items-center justify-center pointer-events-auto touch-none cursor-pointer group"
+                    // isolate avoids negative z-index issues in some layouts
+                    "relative isolate flex h-24 w-24 items-center justify-center pointer-events-auto touch-none cursor-pointer group"
                 )}
                 {...pointerHandlers}
                 // Ensure the div can receive focus for keyboard accessibility
@@ -70,26 +67,25 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
                 aria-label={label}
                 aria-pressed={isListening}
             >
-                {/* Shader Wave Visualization (white bg, black wave) */}
-                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-full">
-                    <P5WaveShader className="h-full w-full" level={level} active={isListening} />
-                </div>
-
                 {/* Control Button Visuals */}
                 <div
                     className={cn(
-                        "relative z-10 flex h-20 w-20 items-center justify-center rounded-full shadow-xl transition-all duration-200 pointer-events-none",
-                        "bg-black text-white",
-                        isListening ? "scale-105" : "group-hover:scale-105 group-active:scale-95"
+                        "relative z-10 flex h-20 w-20 items-center justify-center rounded-full shadow-xl transition-all duration-200",
+                        "bg-black text-white border-2 border-transparent",
+                        isListening ? "scale-110 border-gray-500/50 bg-gray-900" : "group-hover:scale-105 group-active:scale-95"
                     )}
                 >
                     <Mic
                         className={cn(
-                            "h-8 w-8 transition-colors duration-200",
-                            isListening ? "text-red-500 animate-pulse" : "text-white"
+                            "h-8 w-8 transition-colors duration-200 text-white"
                         )}
                     />
                 </div>
+                
+                {/* Ripple effect when listening */}
+                {isListening && (
+                    <div className="absolute inset-0 rounded-full animate-ping bg-gray-500/40" />
+                )}
             </div>
         </div>
     );

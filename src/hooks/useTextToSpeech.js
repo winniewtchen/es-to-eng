@@ -1,62 +1,112 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { playTTS, stopTTS } from '../services/tts';
 
+/**
+ * Hook for text-to-speech using OpenAI's TTS API
+ * Falls back to browser SpeechSynthesis if API fails
+ */
 export const useTextToSpeech = () => {
-  const [voices, setVoices] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const loadVoices = () => {
-      setVoices(window.speechSynthesis.getVoices());
-    };
-    
-    loadVoices();
-    
-    // Chrome loads voices asynchronously
-    if (window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-    
-    return () => {
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = null;
-      }
-    };
-  }, []);
-
-  const speak = useCallback((text, langCode = 'es-MX') => {
+  /**
+   * Speak text using OpenAI TTS (with browser fallback)
+   * @param {string} text - Text to speak
+   * @param {string} langCode - Language code (used for fallback voice selection)
+   */
+  const speak = useCallback(async (text, langCode = 'es-MX') => {
     if (!text) return;
 
-    // Cancel currently playing audio to avoid queue overlap
-    window.speechSynthesis.cancel();
+    // Stop any currently playing audio
+    stop();
+    setError(null);
+    setIsLoading(true);
 
+    try {
+      await playTTS(text, {
+        voice: 'coral',
+        playbackRate: 0.9,
+        onStart: () => {
+          setIsLoading(false);
+          setIsPlaying(true);
+        },
+        onEnd: () => {
+          setIsPlaying(false);
+        },
+        onError: (err) => {
+          setIsLoading(false);
+          setIsPlaying(false);
+          setError(err.message);
+        }
+      });
+    } catch (err) {
+      console.warn('OpenAI TTS failed, falling back to browser:', err.message);
+      setIsLoading(false);
+      
+      // Use browser fallback for this call
+      speakWithBrowser(text, langCode);
+    }
+  }, []);
+
+  /**
+   * Browser SpeechSynthesis fallback
+   */
+  const speakWithBrowser = useCallback((text, langCode) => {
+    if (!('speechSynthesis' in window)) {
+      setError('Speech synthesis not supported');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    
     const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
     
-    // Attempt to find a specific voice for the requested language
-    // Priority: Exact match (es-MX) -> Region match (es-*) -> First available
-    // For "Authentic Spanish", we prefer Mexico (es-MX) or Spain (es-ES)
-    
+    // Find appropriate voice
     let voice = null;
-    
     if (langCode.startsWith('es')) {
-        // Prefer Mexican Spanish for authenticity in this specific "Rápido" context (Mexico travel)
-        voice = voices.find(v => v.lang === 'es-MX');
-        if (!voice) voice = voices.find(v => v.lang === 'es-ES');
-        if (!voice) voice = voices.find(v => v.lang.startsWith('es'));
+      voice = voices.find(v => v.lang === 'es-MX') ||
+              voices.find(v => v.lang === 'es-ES') ||
+              voices.find(v => v.lang.startsWith('es'));
     } else {
-        // Generic fallback for other languages
-        voice = voices.find(v => v.lang === langCode) || 
-                voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+      voice = voices.find(v => v.lang === langCode) ||
+              voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
     }
 
     if (voice) {
       utterance.voice = voice;
     }
     
-    utterance.lang = langCode; 
-    utterance.rate = 1.0; 
+    utterance.lang = langCode;
+    utterance.rate = 0.9;
     utterance.pitch = 1.0;
 
-    window.speechSynthesis.speak(utterance);
-  }, [voices]);
+    utterance.onstart = () => setIsPlaying(true);
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setError('Speech synthesis failed');
+    };
 
-  return { speak };
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  /**
+   * Stop any currently playing audio
+   */
+  const stop = useCallback(() => {
+    stopTTS();
+    window.speechSynthesis?.cancel();
+    setIsPlaying(false);
+    setIsLoading(false);
+  }, []);
+
+  return { 
+    speak, 
+    stop, 
+    isLoading, 
+    isPlaying, 
+    error 
+  };
 };

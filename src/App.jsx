@@ -10,6 +10,7 @@ import { useVocabulary } from '@/hooks/useVocabulary'
 import { Button } from '@/components/ui/button'
 import { Book, ArrowRightLeft } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import ImageUpload from '@/components/features/Translator/ImageUpload'
 
 // Language configuration
 const LANGUAGES = {
@@ -24,6 +25,7 @@ function App() {
   const [isTranslating, setIsTranslating] = useState(false)
   const [sourceLang, setSourceLang] = useState('en-US') // 'en-US', 'es-MX', or 'zh-CN'
   const [targetLang, setTargetLang] = useState('es')    // 'es', 'en', or 'zh'
+  const [showImageUpload, setShowImageUpload] = useState(false)
 
   const { isListening, transcript, startListening, stopListening, interimTranscript } = useSpeechToText(sourceLang);
   const { savePhrase, vocab, deletePhrase } = useVocabulary();
@@ -173,6 +175,28 @@ function App() {
     return Object.values(LANGUAGES).filter(l => l.code !== sourceCode);
   };
 
+  // Handle image translation result
+  const handleImageTranslation = ({ originalText, translatedText, detectedLanguage }) => {
+    setInputText(originalText);
+    setTranslation(translatedText);
+    setShowImageUpload(false);
+
+    // Update source language if detected
+    if (detectedLanguage) {
+      let detected = detectedLanguage;
+      if (detected.startsWith('zh')) detected = 'zh';
+      else if (detected.startsWith('en')) detected = 'en';
+      else if (detected.startsWith('es')) detected = 'es';
+
+      const newSourceKey = Object.keys(LANGUAGES).find(
+        key => LANGUAGES[key].code === detected
+      );
+      if (newSourceKey && newSourceKey !== sourceLang) {
+        setSourceLang(newSourceKey);
+      }
+    }
+  };
+
 
 
   return (
@@ -202,13 +226,22 @@ function App() {
           </select>
         </div>
 
-        <InputArea
-          value={isListening ? (inputText + (interimTranscript ? ' ' + interimTranscript : '')) : inputText}
-          onChange={setInputText}
-          placeholder={isListening ? "Listening..." : "Type here..."}
-          onSubmit={() => handleTranslate(inputText)}
-          lang={sourceLang}
-        />
+        {showImageUpload ? (
+          <ImageUpload
+            targetLang={targetLang}
+            onTranslationComplete={handleImageTranslation}
+            onClose={() => setShowImageUpload(false)}
+          />
+        ) : (
+          <InputArea
+            value={isListening ? (inputText + (interimTranscript ? ' ' + interimTranscript : '')) : inputText}
+            onChange={setInputText}
+            placeholder={isListening ? "Listening..." : "Type here..."}
+            onSubmit={() => handleTranslate(inputText)}
+            lang={sourceLang}
+            onImageClick={() => setShowImageUpload(true)}
+          />
+        )}
         <div onClick={() => savePhrase(inputText, translation)} className="cursor-pointer">
           <OutputArea translation={translation} isTranslating={isTranslating} targetLang={targetLang} />
         </div>
