@@ -114,9 +114,10 @@ export default function VoiceIntensityVisual({
   return (
     <div
       className={cn(
-        "relative flex h-32 w-32 items-center justify-center",
+        "relative flex h-32 w-32 items-center justify-center pointer-events-auto touch-none cursor-pointer",
         className
       )}
+      {...pointerHandlers}
     >
       {/* 3D Wave Visualization */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
@@ -133,12 +134,11 @@ export default function VoiceIntensityVisual({
         aria-label={label}
         aria-pressed={isListening}
         className={cn(
-          "relative z-10 flex h-20 w-20 items-center justify-center rounded-full shadow-xl transition-all duration-200",
+          "relative z-10 flex h-20 w-20 items-center justify-center rounded-full shadow-xl transition-all duration-200 pointer-events-none",
           "bg-black text-white",
           "focus-visible:ring-4 focus-visible:ring-primary/50 focus-visible:outline-none",
           isListening ? "scale-105" : "hover:scale-105 active:scale-95"
         )}
-        {...pointerHandlers}
       >
         <Mic
           className={cn(
