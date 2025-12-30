@@ -72,9 +72,12 @@ const OverlaySticker = ({ block, imageDimensions, isVisible = true }) => {
           lineHeight: '1.1',
           padding: isExpanded ? `${padding}px` : '1px',
           maxWidth: isExpanded ? '300px' : 'none',
+          wordWrap: 'break-word',
+          overflowWrap: 'break-word',
+          whiteSpace: 'normal'
         }}
       >
-        <span className={isExpanded ? '' : 'line-clamp-3'}>
+        <span>
           {block.translatedText}
         </span>
       </div>

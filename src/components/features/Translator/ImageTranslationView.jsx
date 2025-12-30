@@ -99,8 +99,8 @@ const ImageTranslationView = ({
                     style={{
                       height: 'auto',
                       width: 'auto',
-                      maxWidth: '100vw',
-                      maxHeight: '100vh',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
                       objectFit: 'contain'
                     }}
                   />
