@@ -10,7 +10,7 @@ import React, { useState } from 'react';
  * @param {Object} props.imageDimensions - {width, height} of the original image
  * @param {boolean} props.isVisible - Whether the sticker is visible
  */
-const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = true }) => {
+const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = true, index }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!block || !block.translatedText || !isVisible) return null;
@@ -41,6 +41,12 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
   
   // Clamp font size: min 10px, max 90% of height or 120px
   const fontSize = Math.max(10, Math.min(estimatedFontSize, absH * 0.9, 120));
+  
+  // #region agent log
+  if (index === 0) {
+    fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'OverlaySticker.jsx:45',message:'Sticker Calc',data:{text:block.translatedText, absW, absH, fontSize, leftPct, topPct, currentW, currentH},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+  }
+  // #endregion
   
   // padding for the text
   const padding = 4;

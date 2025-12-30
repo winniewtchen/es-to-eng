@@ -22,6 +22,9 @@ const ImageTranslationView = ({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
+        // #region agent log
+        fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageTranslationView.jsx:25',message:'ResizeObserver update',data:{width:entry.contentRect.width,height:entry.contentRect.height, imageUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
         setContainerSize({
           width: entry.contentRect.width,
           height: entry.contentRect.height
