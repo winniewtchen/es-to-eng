@@ -31,17 +31,6 @@ const InputArea = ({ value, onChange, placeholder, onSubmit, lang, onImageClick 
                 />
 
                 <div className="absolute top-2 right-2 flex items-center gap-1">
-                    {onImageClick && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={onImageClick}
-                            title="Translate from image"
-                        >
-                            <Camera className="h-4 w-4" />
-                        </Button>
-                    )}
                     <Button
                         variant="ghost"
                         size="icon"

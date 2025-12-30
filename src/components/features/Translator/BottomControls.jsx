@@ -1,8 +1,14 @@
 import React, { useCallback, useMemo, useRef } from "react";
-import { Mic } from "lucide-react";
+import { Mic, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
+const BottomControls = ({ 
+  isListening, 
+  onStartListening, 
+  onStopListening,
+  onCameraClick 
+}) => {
     const activeRef = useRef(false);
 
     const start = useCallback(() => {
@@ -54,7 +60,21 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
     const label = isListening ? "Release to stop" : "Hold to speak";
 
     return (
-        <div className="fixed bottom-8 left-0 right-0 flex justify-center p-4 gradient-mask-t pointer-events-none z-40">
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center items-center gap-8 p-4 gradient-mask-t pointer-events-none z-40">
+             {/* Camera Button */}
+             <div className="flex h-24 w-24 items-center justify-center pointer-events-auto">
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-20 w-20 rounded-full shadow-xl border-2 border-transparent hover:border-gray-500/50 hover:bg-white transition-all duration-200 hover:scale-105 active:scale-95"
+                    onClick={onCameraClick}
+                    title="Translate Image"
+                >
+                    <Camera className="h-8 w-8 text-black" />
+                </Button>
+            </div>
+
+            {/* Mic Button */}
             <div
                 className={cn(
                     // isolate avoids negative z-index issues in some layouts
@@ -91,4 +111,5 @@ const AudioControls = ({ isListening, onStartListening, onStopListening }) => {
     );
 };
 
-export default AudioControls;
+export default BottomControls;
+

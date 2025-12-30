@@ -59,11 +59,29 @@ export const resizeImage = (file) => {
  * Translate text from an image
  * @param {string} imageBase64 - Base64 encoded image (without data URI prefix)
  * @param {string} targetLang - Target language code ('es', 'en', 'zh')
- * @returns {Promise<{originalText: string, translatedText: string, detectedLanguage?: string, message?: string, error?: string}>}
+ * @returns {Promise<{
+ *   originalText: string, 
+ *   translatedText: string, 
+ *   detectedLanguage?: string, 
+ *   blocks: Array<{
+ *     text: string, 
+ *     translatedText: string, 
+ *     boundingBox: {x: number, y: number, width: number, height: number}
+ *   }>,
+ *   imageDimensions: {width: number, height: number},
+ *   message?: string, 
+ *   error?: string
+ * }>}
  */
 export const translateImage = async (imageBase64, targetLang = 'es') => {
   if (!imageBase64) {
-    return { originalText: '', translatedText: '', error: 'No image provided' };
+    return { 
+      originalText: '', 
+      translatedText: '', 
+      blocks: [],
+      imageDimensions: { width: 0, height: 0 },
+      error: 'No image provided' 
+    };
   }
 
   try {
@@ -84,6 +102,8 @@ export const translateImage = async (imageBase64, targetLang = 'es') => {
       return { 
         originalText: '', 
         translatedText: '', 
+        blocks: [],
+        imageDimensions: { width: 0, height: 0 },
         error: data.error || 'Image translation failed' 
       };
     }
@@ -94,6 +114,8 @@ export const translateImage = async (imageBase64, targetLang = 'es') => {
     return { 
       originalText: '', 
       translatedText: '', 
+      blocks: [],
+      imageDimensions: { width: 0, height: 0 },
       error: 'Network request failed' 
     };
   }
@@ -103,7 +125,19 @@ export const translateImage = async (imageBase64, targetLang = 'es') => {
  * Process an image file and translate it
  * @param {File} file - Image file
  * @param {string} targetLang - Target language code
- * @returns {Promise<{originalText: string, translatedText: string, detectedLanguage?: string, message?: string, error?: string}>}
+ * @returns {Promise<{
+ *   originalText: string, 
+ *   translatedText: string, 
+ *   detectedLanguage?: string, 
+ *   blocks: Array<{
+ *     text: string, 
+ *     translatedText: string, 
+ *     boundingBox: {x: number, y: number, width: number, height: number}
+ *   }>,
+ *   imageDimensions: {width: number, height: number},
+ *   message?: string, 
+ *   error?: string
+ * }>}
  */
 export const processAndTranslateImage = async (file, targetLang = 'es') => {
   try {
@@ -114,6 +148,8 @@ export const processAndTranslateImage = async (file, targetLang = 'es') => {
     return { 
       originalText: '', 
       translatedText: '', 
+      blocks: [],
+      imageDimensions: { width: 0, height: 0 },
       error: err.message || 'Failed to process image' 
     };
   }

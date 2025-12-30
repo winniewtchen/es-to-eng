@@ -2,15 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import MainLayout from '@/components/layout/MainLayout'
 import InputArea from '@/components/features/Translator/InputArea'
 import OutputArea from '@/components/features/Translator/OutputArea'
-import AudioControls from '@/components/features/Translator/AudioControls'
+import BottomControls from '@/components/features/Translator/BottomControls'
+import ImageTranslationView from '@/components/features/Translator/ImageTranslationView'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
 import { translateText } from '@/services/llm'
 import { detectLanguage } from '@/services/detectLanguage'
+import { processAndTranslateImage } from '@/services/imageTranslate'
 import { useVocabulary } from '@/hooks/useVocabulary'
 import { Button } from '@/components/ui/button'
 import { Book, ArrowRightLeft } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import ImageUpload from '@/components/features/Translator/ImageUpload'
 
 // Language configuration
 const LANGUAGES = {
@@ -25,7 +26,16 @@ function App() {
   const [isTranslating, setIsTranslating] = useState(false)
   const [sourceLang, setSourceLang] = useState('en-US') // 'en-US', 'es-MX', or 'zh-CN'
   const [targetLang, setTargetLang] = useState('es')    // 'es', 'en', or 'zh'
-  const [showImageUpload, setShowImageUpload] = useState(false)
+  
+  // Image Mode State
+  const [translationMode, setTranslationMode] = useState('text') // 'text' | 'image'
+  const [imageState, setImageState] = useState({
+    url: null,
+    file: null,
+    translationData: null,
+    isProcessing: false
+  })
+  const fileInputRef = useRef(null)
 
   const { isListening, transcript, startListening, stopListening, interimTranscript } = useSpeechToText(sourceLang);
   const { savePhrase, vocab, deletePhrase } = useVocabulary();
@@ -42,30 +52,16 @@ function App() {
 
   // Handle listening end auto-translate
   useEffect(() => {
-    // If we just stopped listening and have text, translate immediately
-    // Note: isListening logic in hook updates state.
-    // We check if we are NOT listening, but we *were* (implied by content change or external tracker?).
-    // Simplification: If transcript updates and we are NOT listening (anymore), valid. 
-    // But transcript updates only during listening usually.
-    // Better: trigger when isListening goes false.
-  }, []); // Logic is tricky in useEffect deps.
-
-  // Let's use a ref to track previous listening state or just use the dependency on isListening
-  useEffect(() => {
     if (!isListening && transcript) {
       handleTranslate(transcript);
     }
-  }, [isListening]); // trigger when isListening changes to false
+  }, [isListening]); 
 
   // Manual debounced translate for typing
   useEffect(() => {
     if (isListening) return;
     const timer = setTimeout(() => {
       if (inputText && inputText.length > 2) {
-        // Only auto-translate if not recently spoken? 
-        // Simplification: just translate what's there.
-        // But we don't want to re-translate the same thing constantly if it hasn't changed.
-        // We rely on stable inputText.
         handleTranslate(inputText);
       }
     }, 1200);
@@ -77,7 +73,6 @@ function App() {
     const isChinese = /[\u4e00-\u9fa5]/.test(inputText);
     if (isListening || !inputText || (!isChinese && inputText.length < 2)) return;
     if (manualOverrideRef.current) {
-      // Reset after one detection cycle
       manualOverrideRef.current = false;
       return;
     }
@@ -86,7 +81,6 @@ function App() {
       const result = await detectLanguage(inputText);
       if (!result || result.confidence < 0.5) return;
 
-      // Normalize detected language (e.g., 'zh-CN' -> 'zh', 'en-US' -> 'en')
       let detected = result.language;
       if (detected.startsWith('zh')) detected = 'zh';
       else if (detected.startsWith('en')) detected = 'en';
@@ -94,21 +88,15 @@ function App() {
 
       const currentSourceCode = LANGUAGES[sourceLang].code;
 
-      // Only update if detected language is different from current source
       if (detected === currentSourceCode) return;
 
-      // Find the source key for detected language
       const newSourceKey = Object.keys(LANGUAGES).find(
         key => LANGUAGES[key].code === detected
       );
-      if (!newSourceKey) return; // Unknown language, skip
+      if (!newSourceKey) return;
 
-      // Update source language
       setSourceLang(newSourceKey);
 
-      // Auto-set target based on rules:
-      // English or Chinese -> Spanish
-      // Spanish -> English
       if (detected === 'en' || detected === 'zh') {
         setTargetLang('es');
       } else if (detected === 'es') {
@@ -127,33 +115,26 @@ function App() {
     setIsTranslating(false);
   };
 
-  // Handle source language change - ensure target is different
   const handleSourceChange = (newSource) => {
-    manualOverrideRef.current = true; // User manually changed, skip next auto-detect
+    manualOverrideRef.current = true;
     setSourceLang(newSource);
     const newSourceCode = LANGUAGES[newSource].code;
-    // If target matches new source, switch target to something else
     if (targetLang === newSourceCode) {
-      // Pick first available language that's different
       const available = Object.values(LANGUAGES).find(l => l.code !== newSourceCode);
       setTargetLang(available.code);
     }
-    // Clear current text when switching
     setInputText('');
     setTranslation('');
   };
 
-  // Handle target language change
   const handleTargetChange = (newTarget) => {
     setTargetLang(newTarget);
-    // Retranslate if there's text
     if (inputText && inputText.length > 2) {
       handleTranslate(inputText);
     }
   };
 
   const handleSwapLanguages = () => {
-    // Find the source key that matches current target code
     const newSourceKey = Object.keys(LANGUAGES).find(
       key => LANGUAGES[key].code === targetLang
     );
@@ -162,94 +143,176 @@ function App() {
     setSourceLang(newSourceKey);
     setTargetLang(newTargetCode);
 
-    // Swap text
     const currentInput = inputText;
     const currentTranslation = translation;
     setInputText(currentTranslation);
     setTranslation(currentInput);
   };
 
-  // Get available target languages (exclude source)
   const getAvailableTargets = () => {
     const sourceCode = LANGUAGES[sourceLang].code;
     return Object.values(LANGUAGES).filter(l => l.code !== sourceCode);
   };
 
-  // Handle image translation result
-  const handleImageTranslation = ({ originalText, translatedText, detectedLanguage }) => {
-    setInputText(originalText);
-    setTranslation(translatedText);
-    setShowImageUpload(false);
+  // Image Translation Handlers
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
 
-    // Update source language if detected
-    if (detectedLanguage) {
-      let detected = detectedLanguage;
-      if (detected.startsWith('zh')) detected = 'zh';
-      else if (detected.startsWith('en')) detected = 'en';
-      else if (detected.startsWith('es')) detected = 'es';
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      const newSourceKey = Object.keys(LANGUAGES).find(
-        key => LANGUAGES[key].code === detected
-      );
-      if (newSourceKey && newSourceKey !== sourceLang) {
-        setSourceLang(newSourceKey);
+    // Switch to image mode immediately with loading state
+    setTranslationMode('image');
+    setImageState({
+      url: URL.createObjectURL(file),
+      file: file,
+      translationData: null,
+      isProcessing: true
+    });
+
+    try {
+      const result = await processAndTranslateImage(file, targetLang);
+      
+      setImageState(prev => ({
+        ...prev,
+        translationData: result,
+        isProcessing: false
+      }));
+
+      // Auto-detect language update if needed
+      if (result.detectedLanguage) {
+        let detected = result.detectedLanguage;
+        if (detected.startsWith('zh')) detected = 'zh';
+        else if (detected.startsWith('en')) detected = 'en';
+        else if (detected.startsWith('es')) detected = 'es';
+
+        const newSourceKey = Object.keys(LANGUAGES).find(
+          key => LANGUAGES[key].code === detected
+        );
+        if (newSourceKey && newSourceKey !== sourceLang) {
+          setSourceLang(newSourceKey);
+        }
+      }
+
+    } catch (error) {
+      console.error("Image translation error:", error);
+      setImageState(prev => ({
+        ...prev,
+        isProcessing: false,
+        translationData: { error: "Failed to process image" }
+      }));
+    }
+  };
+
+  const handleCloseImageMode = () => {
+    setTranslationMode('text');
+    setImageState({
+      url: null,
+      file: null,
+      translationData: null,
+      isProcessing: false
+    });
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageLanguageChange = async (newTarget) => {
+    setTargetLang(newTarget);
+    
+    if (imageState.file) {
+      setImageState(prev => ({ ...prev, isProcessing: true }));
+      try {
+        const result = await processAndTranslateImage(imageState.file, newTarget);
+        setImageState(prev => ({
+          ...prev,
+          translationData: result,
+          isProcessing: false
+        }));
+      } catch (error) {
+        console.error("Image re-translation error:", error);
+        setImageState(prev => ({
+          ...prev,
+          isProcessing: false,
+          translationData: { error: "Failed to process image" }
+        }));
       }
     }
   };
 
-
-
   return (
     <MainLayout headerRight={<VocabSheet vocab={vocab} onDelete={deletePhrase} />}>
-      <div className="flex-1 flex flex-col gap-6 pb-24">
-        <div className="flex items-center justify-between px-4">
-          <select
-            value={sourceLang}
-            onChange={(e) => handleSourceChange(e.target.value)}
-            className="text-sm font-medium bg-transparent text-foreground border border-border rounded-md px-2 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {Object.entries(LANGUAGES).map(([key, lang]) => (
-              <option key={key} value={key}>{lang.label}</option>
-            ))}
-          </select>
-          <Button variant="ghost" size="icon" onClick={handleSwapLanguages} className="rounded-full hover:bg-muted">
-            <ArrowRightLeft className="h-4 w-4" />
-          </Button>
-          <select
-            value={targetLang}
-            onChange={(e) => handleTargetChange(e.target.value)}
-            className="text-sm font-medium bg-transparent text-foreground border border-border rounded-md px-2 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {getAvailableTargets().map((lang) => (
-              <option key={lang.code} value={lang.code}>{lang.label}</option>
-            ))}
-          </select>
-        </div>
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        // capture="environment" // Optional: force rear camera on mobile
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
-        {showImageUpload ? (
-          <ImageUpload
-            targetLang={targetLang}
-            onTranslationComplete={handleImageTranslation}
-            onClose={() => setShowImageUpload(false)}
-          />
+      <div className="flex-1 flex flex-col gap-6 pb-24 h-full">
+        {translationMode === 'text' ? (
+          <>
+            <div className="flex items-center justify-between px-4">
+              <select
+                value={sourceLang}
+                onChange={(e) => handleSourceChange(e.target.value)}
+                className="text-sm font-medium bg-transparent text-foreground border border-border rounded-md px-2 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {Object.entries(LANGUAGES).map(([key, lang]) => (
+                  <option key={key} value={key}>{lang.label}</option>
+                ))}
+              </select>
+              <Button variant="ghost" size="icon" onClick={handleSwapLanguages} className="rounded-full hover:bg-muted">
+                <ArrowRightLeft className="h-4 w-4" />
+              </Button>
+              <select
+                value={targetLang}
+                onChange={(e) => handleTargetChange(e.target.value)}
+                className="text-sm font-medium bg-transparent text-foreground border border-border rounded-md px-2 py-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {getAvailableTargets().map((lang) => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <InputArea
+              value={isListening ? (inputText + (interimTranscript ? ' ' + interimTranscript : '')) : inputText}
+              onChange={setInputText}
+              placeholder={isListening ? "Listening..." : "Type here..."}
+              onSubmit={() => handleTranslate(inputText)}
+              lang={sourceLang}
+              // Camera button removed from InputArea, now in BottomControls
+            />
+            
+            <div onClick={() => savePhrase(inputText, translation)} className="cursor-pointer">
+              <OutputArea translation={translation} isTranslating={isTranslating} targetLang={targetLang} />
+            </div>
+          </>
         ) : (
-          <InputArea
-            value={isListening ? (inputText + (interimTranscript ? ' ' + interimTranscript : '')) : inputText}
-            onChange={setInputText}
-            placeholder={isListening ? "Listening..." : "Type here..."}
-            onSubmit={() => handleTranslate(inputText)}
-            lang={sourceLang}
-            onImageClick={() => setShowImageUpload(true)}
+          <ImageTranslationView 
+            imageUrl={imageState.url}
+            translationData={imageState.translationData}
+            isProcessing={imageState.isProcessing}
+            onClose={handleCloseImageMode}
+            targetLang={targetLang}
+            onLanguageChange={handleImageLanguageChange}
+            languages={LANGUAGES}
           />
         )}
-        <div onClick={() => savePhrase(inputText, translation)} className="cursor-pointer">
-          <OutputArea translation={translation} isTranslating={isTranslating} targetLang={targetLang} />
-        </div>
       </div>
-      <AudioControls
+
+      <BottomControls
         isListening={isListening}
         onStartListening={startListening}
         onStopListening={stopListening}
+        onCameraClick={handleCameraClick}
       />
     </MainLayout>
   )

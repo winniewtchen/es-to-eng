@@ -75,55 +75,112 @@ export default async function handler(req, res) {
 
   try {
     // Step 1: Call Google Vision API for OCR
-    const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
-    
-    const visionResponse = await fetch(visionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        requests: [{
-          image: {
-            content: imageBase64
-          },
-          features: [{
-            type: 'TEXT_DETECTION',
-            maxResults: 1
+    const detectText = async (type) => {
+      const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`;
+      
+      const response = await fetch(visionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{
+            image: {
+              content: imageBase64
+            },
+            features: [{
+              type: type,
+              maxResults: 1
+            }]
           }]
-        }]
-      })
-    });
+        })
+      });
+      return await response.json();
+    };
 
-    const visionData = await visionResponse.json();
+    // Try TEXT_DETECTION first (better for signs/menus), fallback to DOCUMENT_TEXT_DETECTION
+    let visionData = await detectText('TEXT_DETECTION');
+    let fullTextAnnotation = visionData.responses?.[0]?.fullTextAnnotation;
     
+    // Check if we found text. If not, and no error, try fallback
+    if ((!fullTextAnnotation || !fullTextAnnotation.text) && !visionData.error) {
+      console.log('No text with TEXT_DETECTION, trying DOCUMENT_TEXT_DETECTION');
+      visionData = await detectText('DOCUMENT_TEXT_DETECTION');
+      fullTextAnnotation = visionData.responses?.[0]?.fullTextAnnotation;
+    }
+
     if (visionData.error) {
       console.error('Google Vision error:', visionData.error);
       return res.status(500).json({ error: 'Image processing failed' });
     }
 
     // Extract text from OCR response
-    const textAnnotations = visionData.responses?.[0]?.textAnnotations;
-    if (!textAnnotations || textAnnotations.length === 0) {
-      return res.status(200).json({ 
-        originalText: '', 
-        translatedText: '',
-        message: 'No text found in image'
-      });
-    }
-
-    // First annotation contains the full text
-    const originalText = sanitizeOutput(textAnnotations[0].description);
+    // fullTextAnnotation is already set above
     
-    if (!originalText) {
+    if (!fullTextAnnotation || !fullTextAnnotation.text) {
       return res.status(200).json({ 
         originalText: '', 
         translatedText: '',
-        message: 'No text found in image'
+        message: 'No text found in image',
+        blocks: [],
+        imageDimensions: { width: 0, height: 0 }
       });
     }
 
-    // Step 2: Translate the extracted text
+    const originalText = sanitizeOutput(fullTextAnnotation.text);
+    
+    // Extract blocks and dimensions
+    const page = fullTextAnnotation.pages[0];
+    const imageWidth = page.width;
+    const imageHeight = page.height;
+    
+    const blocks = [];
+    const textsToTranslate = [originalText]; // First element is full text
+
+    // Helper to get bounding box from vertices
+    const getBoundingBox = (vertices) => {
+      if (!vertices || vertices.length < 4) return null;
+      
+      const xs = vertices.map(v => v.x || 0);
+      const ys = vertices.map(v => v.y || 0);
+      
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      
+      return {
+        x: minX / imageWidth,
+        y: minY / imageHeight,
+        width: (maxX - minX) / imageWidth,
+        height: (maxY - minY) / imageHeight
+      };
+    };
+
+    // Iterate through blocks to build text segments
+    if (page.blocks) {
+      for (const block of page.blocks) {
+        let blockText = '';
+        
+        for (const paragraph of block.paragraphs) {
+          for (const word of paragraph.words) {
+            blockText += word.symbols.map(s => s.text).join('') + 
+              (word.symbols[word.symbols.length - 1].property?.detectedBreak ? ' ' : '');
+          }
+        }
+        
+        blockText = blockText.trim();
+        if (blockText) {
+          blocks.push({
+            text: blockText,
+            boundingBox: getBoundingBox(block.boundingBox.vertices)
+          });
+          textsToTranslate.push(blockText);
+        }
+      }
+    }
+
+    // Step 2: Translate the extracted text (batch)
     const translateUrl = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
     
     const translateResponse = await fetch(translateUrl, {
@@ -132,7 +189,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        q: originalText,
+        q: textsToTranslate,
         target: targetLang,
         format: 'text'
       })
@@ -142,22 +199,31 @@ export default async function handler(req, res) {
     
     if (translateData.error) {
       console.error('Google Translate error:', translateData.error);
-      // Return original text even if translation fails
       return res.status(200).json({ 
         originalText,
         translatedText: '',
-        error: 'Translation failed, but text was extracted'
+        error: 'Translation failed, but text was extracted',
+        blocks: blocks.map(b => ({ ...b, translatedText: '' })),
+        imageDimensions: { width: imageWidth, height: imageHeight }
       });
     }
 
-    const translatedText = sanitizeOutput(
-      translateData.data?.translations?.[0]?.translatedText
-    );
+    const translations = translateData.data?.translations || [];
+    const fullTranslatedText = translations[0]?.translatedText || '';
+    const detectedLanguage = translations[0]?.detectedSourceLanguage;
+
+    // Map translations back to blocks (skipping first element which is full text)
+    const translatedBlocks = blocks.map((block, index) => ({
+      ...block,
+      translatedText: translations[index + 1]?.translatedText || ''
+    }));
 
     return res.status(200).json({
       originalText,
-      translatedText,
-      detectedLanguage: translateData.data?.translations?.[0]?.detectedSourceLanguage
+      translatedText: fullTranslatedText,
+      detectedLanguage,
+      blocks: translatedBlocks,
+      imageDimensions: { width: imageWidth, height: imageHeight }
     });
     
   } catch (err) {
