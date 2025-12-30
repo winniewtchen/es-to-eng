@@ -44,7 +44,7 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
   
   // #region agent log
   if (index === 0) {
-    fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'OverlaySticker.jsx:45',message:'Sticker Calc',data:{text:block.translatedText, absW, absH, fontSize, leftPct, topPct, currentW, currentH},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'OverlaySticker.jsx:45',message:'Sticker Calc',data:{text:block.translatedText, absW, absH, fontSize, leftPct, topPct, currentW, currentH},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H3'})}).catch(()=>{});
   }
   // #endregion
   

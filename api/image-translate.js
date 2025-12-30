@@ -218,6 +218,17 @@ export default async function handler(req, res) {
       translatedText: translations[index + 1]?.translatedText || ''
     }));
 
+    // #region agent log
+    try {
+      // Use fs to append to log file directly since we are on server side (local environment)
+      // Note: In Vercel prod this wouldn't work, but for local dev it should if we have access.
+      // If not, we fall back to console. But the instructions say "prefer writing logs directly by appending NDJSON lines... for other languages".
+      // Since this is JS but server-side, I can use fs if available, or fetch if the ingestion server is reachable from the server process.
+      // I'll use fetch to be consistent with the ingestion endpoint provided.
+      fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/image-translate.js:220',message:'Translation Success',data:{imageWidth, imageHeight, blocksCount: translatedBlocks.length, firstBlock: translatedBlocks[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H4'})}).catch(e=>console.error('Log error', e));
+    } catch (e) {}
+    // #endregion
+
     return res.status(200).json({
       originalText,
       translatedText: fullTranslatedText,
