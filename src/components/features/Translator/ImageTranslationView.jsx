@@ -23,7 +23,7 @@ const ImageTranslationView = ({
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageTranslationView.jsx:25',message:'ResizeObserver update',data:{width:entry.contentRect.width,height:entry.contentRect.height, imageUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H1'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageTranslationView.jsx:25',message:'ResizeObserver update',data:{width:entry.contentRect.width,height:entry.contentRect.height, imageUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run3-fix',hypothesisId:'H1'})}).catch(()=>{});
         // #endregion
         setContainerSize({
           width: entry.contentRect.width,
@@ -83,19 +83,19 @@ const ImageTranslationView = ({
         </div>
       </div>
 
-      {/* Main Viewer */}
-      <div className="flex-1 w-full h-full flex items-center justify-center">
+      {/* Main Viewer - Use overflow-auto to allow scrolling on mobile */}
+      <div className="flex-1 w-full overflow-auto flex items-start justify-center pt-16 pb-4">
         <TransformWrapper
           initialScale={1}
           minScale={0.5}
           maxScale={4}
-          centerOnInit
+          centerOnInit={false}
           wheel={{ step: 0.1 }}
         >
           {({ zoomIn, zoomOut, resetTransform }) => (
             <>
               {/* Zoom Controls Overlay */}
-              <div className="absolute bottom-20 right-4 z-50 flex flex-col gap-2">
+              <div className="fixed bottom-28 right-4 z-50 flex flex-col gap-2">
                 <Button variant="secondary" size="icon" onClick={() => zoomIn()} className="rounded-full opacity-80 hover:opacity-100">
                   <ZoomIn className="h-4 w-4" />
                 </Button>
@@ -108,37 +108,25 @@ const ImageTranslationView = ({
               </div>
 
               <TransformComponent
-                wrapperClass="!w-full !h-full"
-                contentClass="!w-full !h-full flex items-center justify-center"
+                wrapperStyle={{ width: '100%' }}
+                contentStyle={{ width: '100%' }}
               >
                 {/* 
-                    Using CSS Grid ensures the container and overlay match the image size perfectly.
-                    The image drives the size of the grid cell, and the overlay fills it.
+                    The image container fills the width and lets height be auto.
+                    On mobile, this ensures the image is visible at full width.
                 */}
                 <div 
                   ref={containerRef}
-                  style={{ 
-                    display: 'grid', 
-                    gridTemplateAreas: '"stack"', 
-                    width: 'fit-content', 
-                    height: 'fit-content' 
-                  }}
+                  className="relative w-full"
                 >
                   <img 
                     src={imageUrl} 
                     alt="Original" 
-                    className="block"
-                    style={{
-                      gridArea: 'stack',
-                      height: 'auto',
-                      width: 'auto',
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain'
-                    }}
+                    className="block w-full h-auto"
                   />
                   
-                  <div style={{ gridArea: 'stack', zIndex: 10, pointerEvents: 'none' }}>
+                  {/* Overlay positioned absolutely over the image */}
+                  <div className="absolute inset-0" style={{ zIndex: 10, pointerEvents: 'none' }}>
                     {!isProcessing && translationData && (
                       <TranslationOverlay
                         blocks={blocks}
@@ -150,10 +138,7 @@ const ImageTranslationView = ({
                   </div>
                   
                   {isProcessing && (
-                     <div 
-                       className="bg-black/40 flex items-center justify-center"
-                       style={{ gridArea: 'stack', zIndex: 20 }}
-                     >
+                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center" style={{ zIndex: 20 }}>
                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
                      </div>
                   )}

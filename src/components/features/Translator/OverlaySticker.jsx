@@ -40,11 +40,26 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
   const estimatedFontSize = Math.sqrt(area / (textLength * 0.6)); // 0.6 is approx char aspect ratio
   
   // Clamp font size: min 10px, max 90% of height or 120px
-  const fontSize = Math.max(10, Math.min(estimatedFontSize, absH * 0.9, 120));
+  // In mobile view (small container), absH might be very small (e.g., 17px).
+  // If we clamp min to 10px, it might be okay, but if the box is only 15px high, 10px font + padding might overflow.
+  // We need to ensure the container itself is visible.
+  
+  // If the calculated dimension is extremely small, we force a minimum visible size for the TOUCH TARGET,
+  // but we might need to scale the text differently.
+  
+  const minDimension = 20; // Minimum touch target size in pixels
+  const finalW = Math.max(absW, isExpanded ? 0 : minDimension);
+  const finalH = Math.max(absH, isExpanded ? 0 : minDimension);
+
+  // Re-calculate font size based on the potentially forced minimum dimension
+  // if we are using the forced dimension, we might want to scale down text or just accept it is small.
+  // Actually, the issue might be that 17px height is just too small to render comfortably with padding.
+  
+  const fontSize = Math.max(10, Math.min(estimatedFontSize, finalH * 0.9, 120));
   
   // #region agent log
   if (index === 0) {
-    fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'OverlaySticker.jsx:45',message:'Sticker Calc',data:{text:block.translatedText, absW, absH, fontSize, leftPct, topPct, currentW, currentH},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'H3'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7245/ingest/33364902-f918-42f6-a6a0-44ee4a35f799',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'OverlaySticker.jsx:45',message:'Sticker Calc',data:{text:block.translatedText, absW, absH, finalW, finalH, fontSize, leftPct, topPct, currentW, currentH},timestamp:Date.now(),sessionId:'debug-session',runId:'run3-fix',hypothesisId:'H3'})}).catch(()=>{});
   }
   // #endregion
   
@@ -60,6 +75,9 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
         width: `${widthPct}%`,
         height: `${heightPct}%`,
         // overflow-visible is default for divs unless specified otherwise
+        // FORCE visibility to ensure it's not hidden by parent overflow
+        zIndex: 10,
+        overflow: 'visible' 
       }}
     >
       <div 
@@ -81,8 +99,9 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
         style={{
           width: isExpanded ? 'auto' : '100%',
           height: isExpanded ? 'auto' : '100%',
-          minWidth: isExpanded ? `${absW}px` : '0',
-          minHeight: isExpanded ? `${absH}px` : '0',
+          // Use min-width/height to ensure visibility even if calculated size is tiny
+          minWidth: isExpanded ? `${absW}px` : (absW < minDimension ? `${minDimension}px` : '100%'),
+          minHeight: isExpanded ? `${absH}px` : (absH < minDimension ? `${minDimension}px` : '100%'),
           fontSize: `${fontSize}px`,
           lineHeight: '1.1',
           padding: isExpanded ? `${padding}px` : '1px',
@@ -90,10 +109,14 @@ const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = tru
           wordWrap: 'break-word',
           overflowWrap: 'break-word',
           whiteSpace: 'normal',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          // Center the expanded box over the anchor point if we forced size
+          transform: (!isExpanded && (absW < minDimension || absH < minDimension)) ? 'translate(-50%, -50%)' : 'none',
+          marginLeft: (!isExpanded && absW < minDimension) ? '50%' : '0',
+          marginTop: (!isExpanded && absH < minDimension) ? '50%' : '0',
         }}
       >
-        <span>
+        <span style={{ transform: fontSize < 10 ? `scale(${10/fontSize})` : 'none', display: 'inline-block' }}>
           {block.translatedText}
         </span>
       </div>
