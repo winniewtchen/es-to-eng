@@ -95,12 +95,13 @@ const ImageTranslationView = ({
                   <img 
                     src={imageUrl} 
                     alt="Original" 
-                    className="max-w-none block"
+                    className="block"
                     style={{
                       height: 'auto',
                       width: 'auto',
-                      // Removed object-contain to prevent letterboxing inside the container
-                      // The TransformComponent handles the panning/zooming
+                      maxWidth: '100vw',
+                      maxHeight: '100vh',
+                      objectFit: 'contain'
                     }}
                   />
                   
