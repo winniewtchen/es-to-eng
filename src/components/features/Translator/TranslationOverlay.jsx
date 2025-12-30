@@ -2,48 +2,42 @@ import React from 'react';
 import OverlaySticker from './OverlaySticker';
 
 /**
- * TranslationOverlay - SVG container for all translation stickers
+ * TranslationOverlay - HTML container for all translation stickers
  * 
  * @param {Object} props
  * @param {Array} props.blocks - Array of translation blocks
  * @param {Object} props.imageDimensions - {width, height}
+ * @param {Object} props.containerSize - {width, height} of the rendered container
  * @param {boolean} props.showOverlay - Toggle visibility
  */
-const TranslationOverlay = ({ blocks, imageDimensions, showOverlay }) => {
+const TranslationOverlay = ({ blocks, imageDimensions, containerSize, showOverlay }) => {
   if (!imageDimensions || !imageDimensions.width || !imageDimensions.height) return null;
+  
+  // No scaling needed as we use percentage-based positioning
+  // The container is handled by the parent grid layout
 
   return (
-    <svg
-      width={imageDimensions.width}
-      height={imageDimensions.height}
-      viewBox={`0 0 ${imageDimensions.width} ${imageDimensions.height}`}
+    <div
       style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
         width: '100%',
         height: '100%',
-        pointerEvents: 'none', // Allow clicks to pass through to image, stickers re-enable pointer-events
+        pointerEvents: 'none',
+        visibility: showOverlay ? 'visible' : 'hidden',
+        position: 'relative', // Ensure children absolute positioning is relative to this
       }}
     >
-      <defs>
-        <filter id="sticker-shadow">
-          <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.5"/>
-        </filter>
-      </defs>
-      
       {blocks.map((block, index) => (
-        <g key={index} style={{ pointerEvents: 'auto' }}>
+        <div key={index} style={{ pointerEvents: 'auto' }}>
           <OverlaySticker
             block={block}
             imageDimensions={imageDimensions}
-            isVisible={showOverlay}
+            containerSize={containerSize}
+            isVisible={true} // Visibility handled by parent container
           />
-        </g>
+        </div>
       ))}
-    </svg>
+    </div>
   );
 };
 
 export default TranslationOverlay;
-

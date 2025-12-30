@@ -10,44 +10,53 @@ import React, { useState } from 'react';
  * @param {Object} props.imageDimensions - {width, height} of the original image
  * @param {boolean} props.isVisible - Whether the sticker is visible
  */
-const OverlaySticker = ({ block, imageDimensions, isVisible = true }) => {
+const OverlaySticker = ({ block, imageDimensions, containerSize, isVisible = true }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!block || !block.translatedText || !isVisible) return null;
 
   const { x, y, width, height } = block.boundingBox;
-  const { width: imgW, height: imgH } = imageDimensions;
+  
+  // Use percentage based positioning
+  const leftPct = x * 100;
+  const topPct = y * 100;
+  const widthPct = width * 100;
+  const heightPct = height * 100;
 
-  // Convert normalized coordinates to absolute pixels
-  const absX = x * imgW;
-  const absY = y * imgH;
-  const absW = width * imgW;
-  const absH = height * imgH;
+  // Determine current rendering dimensions for font size calculation
+  // Fallback to imageDimensions if containerSize is not yet available (initial render)
+  // but be careful not to create huge fonts if container is actually small.
+  // Using containerSize if available is best.
+  const currentW = containerSize?.width || imageDimensions.width;
+  const currentH = containerSize?.height || imageDimensions.height;
+
+  // Convert normalized coordinates to absolute pixels based on current render size
+  const absW = width * currentW;
+  const absH = height * currentH;
   
   // Calculate dynamic font size based on box area and text length
   const textLength = block.translatedText.length || 1;
   const area = absW * absH;
   const estimatedFontSize = Math.sqrt(area / (textLength * 0.6)); // 0.6 is approx char aspect ratio
   
-  // Clamp font size: min 12px, max 90% of height or 120px
-  const fontSize = Math.max(12, Math.min(estimatedFontSize, absH * 0.9, 120));
+  // Clamp font size: min 10px, max 90% of height or 120px
+  const fontSize = Math.max(10, Math.min(estimatedFontSize, absH * 0.9, 120));
   
   // padding for the text
   const padding = 4;
   
-  // If expanded, show full text and let it grow
-  // If not expanded, clamp it to the box
-  
   return (
-    <foreignObject
-      x={absX}
-      y={absY}
-      width={absW}
-      height={absH}
-      className="overflow-visible"
+    <div
+      className="absolute"
+      style={{
+        left: `${leftPct}%`,
+        top: `${topPct}%`,
+        width: `${widthPct}%`,
+        height: `${heightPct}%`,
+        // overflow-visible is default for divs unless specified otherwise
+      }}
     >
       <div 
-        xmlns="http://www.w3.org/1999/xhtml"
         onClick={(e) => {
           e.stopPropagation();
           setIsExpanded(!isExpanded);
@@ -74,16 +83,16 @@ const OverlaySticker = ({ block, imageDimensions, isVisible = true }) => {
           maxWidth: isExpanded ? '300px' : 'none',
           wordWrap: 'break-word',
           overflowWrap: 'break-word',
-          whiteSpace: 'normal'
+          whiteSpace: 'normal',
+          boxSizing: 'border-box'
         }}
       >
         <span>
           {block.translatedText}
         </span>
       </div>
-    </foreignObject>
+    </div>
   );
 };
 
 export default OverlaySticker;
-

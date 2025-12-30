@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { X, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import TranslationOverlay from './TranslationOverlay';
@@ -14,6 +14,27 @@ const ImageTranslationView = ({
   languages = {}
 }) => {
   const [showOverlay, setShowOverlay] = useState(true);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
   
   if (!imageUrl) return null;
 
@@ -88,15 +109,24 @@ const ImageTranslationView = ({
                 contentClass="!w-full !h-full flex items-center justify-center"
               >
                 {/* 
-                    Using fit-content ensures the container shrinks to the image size.
-                    This way the overlay (absolute 100%) matches the image exactly.
+                    Using CSS Grid ensures the container and overlay match the image size perfectly.
+                    The image drives the size of the grid cell, and the overlay fills it.
                 */}
-                <div style={{ position: 'relative', width: 'fit-content', height: 'fit-content' }}>
+                <div 
+                  ref={containerRef}
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateAreas: '"stack"', 
+                    width: 'fit-content', 
+                    height: 'fit-content' 
+                  }}
+                >
                   <img 
                     src={imageUrl} 
                     alt="Original" 
                     className="block"
                     style={{
+                      gridArea: 'stack',
                       height: 'auto',
                       width: 'auto',
                       maxWidth: '100%',
@@ -105,16 +135,22 @@ const ImageTranslationView = ({
                     }}
                   />
                   
-                  {!isProcessing && translationData && (
-                    <TranslationOverlay
-                      blocks={blocks}
-                      imageDimensions={imageDimensions}
-                      showOverlay={showOverlay}
-                    />
-                  )}
+                  <div style={{ gridArea: 'stack', zIndex: 10, pointerEvents: 'none' }}>
+                    {!isProcessing && translationData && (
+                      <TranslationOverlay
+                        blocks={blocks}
+                        imageDimensions={imageDimensions}
+                        showOverlay={showOverlay}
+                        containerSize={containerSize}
+                      />
+                    )}
+                  </div>
                   
                   {isProcessing && (
-                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                     <div 
+                       className="bg-black/40 flex items-center justify-center"
+                       style={{ gridArea: 'stack', zIndex: 20 }}
+                     >
                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
                      </div>
                   )}
