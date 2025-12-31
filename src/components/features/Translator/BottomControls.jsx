@@ -62,7 +62,7 @@ const BottomControls = ({
     return (
         <div className="fixed bottom-8 left-0 right-0 flex justify-center items-center gap-8 p-4 gradient-mask-t pointer-events-none z-40">
              {/* Camera Button */}
-             <div className="flex h-24 w-24 items-center justify-center pointer-events-auto">
+             <div className="flex h-24 w-24 items-center justify-center pointer-events-auto no-select">
                 <Button
                     variant="secondary"
                     size="icon"
@@ -78,7 +78,7 @@ const BottomControls = ({
             <div
                 className={cn(
                     // isolate avoids negative z-index issues in some layouts
-                    "relative isolate flex h-24 w-24 items-center justify-center pointer-events-auto touch-none cursor-pointer group"
+                    "relative isolate flex h-24 w-24 items-center justify-center pointer-events-auto touch-none cursor-pointer group no-select"
                 )}
                 {...pointerHandlers}
                 // Ensure the div can receive focus for keyboard accessibility
