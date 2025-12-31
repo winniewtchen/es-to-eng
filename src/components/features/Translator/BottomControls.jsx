@@ -70,7 +70,7 @@ const BottomControls = ({
                     onClick={onCameraClick}
                     title="Translate Image"
                 >
-                    <Camera className="h-8 w-8 text-black" />
+                    <Camera className="h-10 w-10 text-black" />
                 </Button>
             </div>
 
