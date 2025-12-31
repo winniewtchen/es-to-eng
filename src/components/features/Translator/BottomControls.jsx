@@ -66,11 +66,11 @@ const BottomControls = ({
                 <Button
                     variant="secondary"
                     size="icon"
-                    className="h-20 w-20 rounded-full shadow-xl border-2 border-transparent hover:border-gray-500/50 hover:bg-white transition-all duration-200 hover:scale-105 active:scale-95"
+                    className="h-20 w-20 rounded-full shadow-xl border-2 border-transparent hover:border-gray-500/50 hover:bg-white transition-all duration-200 hover:scale-105 active:scale-95 [&_svg]:size-8"
                     onClick={onCameraClick}
                     title="Translate Image"
                 >
-                    <Camera className="h-10 w-10 text-black" />
+                    <Camera className="text-black" />
                 </Button>
             </div>
 
